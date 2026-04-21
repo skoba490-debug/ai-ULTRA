@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#020818">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AI Pro Max — Голосовой чат</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+  background: #020818;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+  position: relative;
+  /* iOS safe area bottom spacing */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── SPACE BACKGROUND IMAGE ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    linear-gradient(to bottom, rgba(2,8,24,.55) 0%, rgba(2,8,24,.35) 50%, rgba(2,8,24,.65) 100%),
+    url('https://images.unsplash.com/photo-1462331940025-496dfbfc7564?w=1920&auto=format&fit=crop&q=80') center/cover no-repeat;
+  pointer-events: none;
+}
+
+/* ── STARFIELD ── */
+#stars-canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ── LAYOUT ── */
+header, .tabs, footer, #chat, #divination-panel, #speaking {
+  position: relative;
+  z-index: 1;
+}
+
+header {
+  background: rgba(10,20,60,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(99,102,241,.3);
+  padding: 10px 14px;
+  padding-top: max(10px, env(safe-area-inset-top));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-shrink: 0;
+  font-weight: bold;
+  font-size: 1rem;
+  letter-spacing: .03em;
+  text-shadow: 0 0 12px rgba(139,92,246,.7);
+}
+
+select {
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(99,102,241,.4);
+  background: rgba(15,23,42,.8);
+  color: #c4b5fd;
+  font-size: .82rem;
+  cursor: pointer;
+  outline: none;
+}
+select:focus { border-color: #818cf8; }
+
+.tabs {
+  display: flex;
+  background: rgba(5,10,40,.85);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid rgba(99,102,241,.2);
+  flex-shrink: 0;
+}
+.tab {
+  flex: 1;
+  padding: 9px;
+  text-align: center;
+  font-size: .88rem;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  color: #64748b;
+  border-bottom: 2px solid transparent;
+  transition: all .2s;
+  border-radius: 0;
+}
+.tab:hover { color: #a5b4fc; background: rgba(99,102,241,.1); }
+.tab.active { color: #a78bfa; border-bottom-color: #8b5cf6; font-weight: bold; }
+
+/* ── CHAT ── */
+#chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.message {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 14px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.55;
+  font-size: .93rem;
+  animation: msgIn .25s ease;
+}
+@keyframes msgIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+.user {
+  background: linear-gradient(135deg,#3730a3,#6d28d9);
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+  box-shadow: 0 0 14px rgba(139,92,246,.35);
+}
+.bot {
+  background: rgba(15,23,60,.9);
+  border: 1px solid rgba(99,102,241,.25);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+}
+.bot.thinking { opacity: .55; font-style: italic; }
+
+/* ── FOOTER ── */
+footer {
+  display: flex;
+  gap: 6px;
+  padding: 10px;
+  padding-left: max(10px, env(safe-area-inset-left));
+  padding-right: max(10px, env(safe-area-inset-right));
+  padding-bottom: max(10px, env(safe-area-inset-bottom));
+  background: rgba(5,10,40,.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(99,102,241,.2);
+  flex-shrink: 0;
+}
+input {
+  flex: 1;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid rgba(99,102,241,.35);
+  border-radius: 10px;
+  outline: none;
+  background: rgba(15,23,42,.8);
+  color: #e2e8f0;
+  -webkit-appearance: none;
+  appearance: none;
+  min-width: 0;
+}
+input::placeholder { color: #64748b; }
+input:focus { border-color: #8b5cf6; }
+button {
+  font-size: 17px;
+  padding: 10px 13px;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(99,102,241,.75);
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s, box-shadow .15s;
+  flex-shrink: 0;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+button:hover { background: rgba(109,40,217,.85); box-shadow: 0 0 10px rgba(139,92,246,.5); }
+button:active { opacity: .8; transform: scale(.97); }
+button:disabled { opacity: .4; cursor: not-allowed; }
+#ttsBtn { background: rgba(16,185,129,.7); }
+#ttsBtn:hover { background: rgba(5,150,105,.85); }
+#ttsBtn.muted { background: rgba(100,116,139,.5); }
+
+#speaking {
+  display: none;
+  font-size: .7rem;
+  color: #a78bfa;
+  text-align: center;
+  padding: 2px;
+  flex-shrink: 0;
+  text-shadow: 0 0 8px #8b5cf6;
+}
+#speaking.active { display: block; animation: pulse 1.2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.45} }
+
+/* ── IMAGE ── */
+.img-wrap { display: flex; flex-direction: column; gap: 5px; align-self: flex-start; }
+.chat-img { max-width: 100%; border-radius: 12px; border: 1px solid rgba(99,102,241,.3); cursor: pointer; }
+.dl-btn { font-size: .8rem; padding: 5px 10px; background: rgba(99,102,241,.7); color: #fff; border: none; border-radius: 8px; cursor: pointer; }
+.dl-btn:hover { background: rgba(109,40,217,.85); }
+
+/* ── DIVINATION PANEL ── */
+#divination-panel {
+  display: none;
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+#divination-panel.active { display: flex; }
+
+.div-title {
+  font-size: 1.1rem;
+  font-weight: bold;
+  text-align: center;
+  color: #c4b5fd;
+  text-shadow: 0 0 16px rgba(167,139,250,.6);
+  letter-spacing: .04em;
+}
+
+.div-btns {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+.div-btn {
+  padding: 12px 18px;
+  border-radius: 14px;
+  font-size: .95rem;
+  border: 1px solid rgba(167,139,250,.35);
+  background: rgba(10,15,50,.7);
+  color: #c4b5fd;
+  cursor: pointer;
+  transition: all .2s;
+  backdrop-filter: blur(8px);
+}
+.div-btn:hover, .div-btn.selected {
+  background: rgba(99,102,241,.3);
+  border-color: #8b5cf6;
+  box-shadow: 0 0 16px rgba(139,92,246,.4);
+  color: #e9d5ff;
+}
+
+/* ── CARD REVEAL AREA ── */
+#reveal-area {
+  width: 100%;
+  max-width: 360px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.draw-btn {
+  padding: 13px 32px;
+  border-radius: 50px;
+  font-size: 1rem;
+  border: 1px solid rgba(167,139,250,.5);
+  background: linear-gradient(135deg,rgba(76,29,149,.6),rgba(109,40,217,.6));
+  color: #e9d5ff;
+  cursor: pointer;
+  letter-spacing: .05em;
+  transition: all .25s;
+  box-shadow: 0 0 20px rgba(139,92,246,.3);
+  width: 100%;
+}
+.draw-btn:hover { box-shadow: 0 0 30px rgba(167,139,250,.6); transform: translateY(-1px); }
+
+/* ── TAROT CARD ── */
+.card-scene {
+  width: 180px;
+  height: 300px;
+  perspective: 900px;
+}
+.card-flip {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform .9s cubic-bezier(.4,0,.2,1);
+}
+.card-flip.flipped { transform: rotateY(180deg); }
+.card-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  border-radius: 14px;
+  overflow: hidden;
+}
+.card-back {
+  background: linear-gradient(135deg,#1e1b4b,#4c1d95);
+  border: 2px solid rgba(167,139,250,.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  box-shadow: 0 0 24px rgba(139,92,246,.5);
+}
+.card-front {
+  transform: rotateY(180deg);
+  border: 2px solid rgba(167,139,250,.6);
+  box-shadow: 0 0 30px rgba(139,92,246,.6);
+}
+.card-front img { width: 100%; height: 100%; object-fit: cover; }
+
+.card-info {
+  text-align: center;
+  animation: fadeIn .6s ease;
+}
+@keyframes fadeIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.card-name {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: #e9d5ff;
+  text-shadow: 0 0 14px rgba(167,139,250,.7);
+  margin-bottom: 6px;
+}
+.card-meaning {
+  font-size: .88rem;
+  color: #a5b4fc;
+  line-height: 1.5;
+  max-width: 280px;
+}
+
+/* ── RUNE ── */
+.rune-display {
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(109,40,217,.25) 0%, rgba(10,15,50,.8) 70%);
+  border: 2px solid rgba(251,191,36,.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 5rem;
+  color: #fbbf24;
+  text-shadow: 0 0 30px #f59e0b, 0 0 60px rgba(245,158,11,.5);
+  box-shadow: 0 0 40px rgba(245,158,11,.3), inset 0 0 30px rgba(109,40,217,.2);
+  animation: runeGlow 2.5s ease-in-out infinite;
+  transition: all .6s;
+}
+@keyframes runeGlow {
+  0%,100%{ box-shadow:0 0 40px rgba(245,158,11,.3),inset 0 0 30px rgba(109,40,217,.2); }
+  50%{ box-shadow:0 0 70px rgba(245,158,11,.6),inset 0 0 40px rgba(109,40,217,.35); }
+}
+.rune-display.hidden { font-size: 0; opacity: 0; }
+
+/* ── HEXAGRAM ── */
+.hexagram-wrap {
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 7px;
+  padding: 20px;
+  background: rgba(10,15,50,.7);
+  border: 1px solid rgba(99,102,241,.25);
+  border-radius: 16px;
+  box-shadow: 0 0 30px rgba(99,102,241,.2);
+  transition: all .5s;
+}
+.hex-line {
+  height: 9px;
+  border-radius: 5px;
+  animation: hexAppear .4s ease;
+}
+.hex-solid { background: linear-gradient(90deg,#818cf8,#c4b5fd); box-shadow: 0 0 8px rgba(139,92,246,.6); }
+.hex-broken {
+  display: flex;
+  gap: 10px;
+}
+.hex-broken span { flex: 1; background: linear-gradient(90deg,#818cf8,#c4b5fd); border-radius: 5px; box-shadow: 0 0 8px rgba(139,92,246,.6); }
+@keyframes hexAppear { from{opacity:0;transform:scaleX(.5)} to{opacity:1;transform:none} }
+
+.hex-info { text-align: center; animation: fadeIn .6s ease; }
+.hex-name { font-size: 1.1rem; font-weight: bold; color: #a5b4fc; text-shadow: 0 0 12px rgba(165,180,252,.6); margin-bottom: 5px; }
+.hex-meaning { font-size: .86rem; color: #94a3b8; line-height: 1.5; max-width: 280px; }
+
+/* ── MOBILE RESPONSIVE ── */
+@media (max-width: 480px) {
+  header {
+    font-size: .88rem;
+    gap: 7px;
+    padding: 8px 10px;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  select { font-size: .78rem; padding: 5px 6px; }
+
+  .tab { font-size: .78rem; padding: 8px 4px; }
+
+  #chat { padding: 8px; gap: 6px; -webkit-overflow-scrolling: touch; }
+  .message { font-size: .88rem; padding: 8px 11px; max-width: 90%; }
+
+  footer { gap: 5px; padding: 8px; padding-bottom: max(8px, env(safe-area-inset-bottom)); }
+  button { font-size: 16px; padding: 9px 11px; min-width: 42px; min-height: 42px; }
+  input { font-size: 16px; padding: 9px 10px; }
+
+  .card-scene { width: 150px; height: 250px; }
+  .draw-btn { font-size: .92rem; padding: 12px 20px; }
+  .div-btn { padding: 10px 14px; font-size: .88rem; }
+
+  .dialog-orb { width: 110px; height: 110px; }
+  .dialog-orb-core { width: 58px; height: 58px; font-size: 1.7rem; }
+  .dialog-ripple:nth-child(1) { width: 76px; height: 76px; }
+  .dialog-ripple:nth-child(2) { width: 94px; height: 94px; }
+  .dialog-ripple:nth-child(3) { width: 112px; height: 112px; }
+  #dialogStatus { font-size: .95rem; }
+  #dialogStopBtn { padding: 11px 28px; font-size: .92rem; }
+}
+
+/* ── LANDSCAPE MOBILE ── */
+@media (max-height: 500px) and (orientation: landscape) {
+  header { padding: 5px 12px; padding-top: max(5px, env(safe-area-inset-top)); }
+  .tabs { display: none; }
+  .message { font-size: .82rem; }
+  footer { padding: 6px 10px; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+  .dialog-orb { width: 80px; height: 80px; }
+  .dialog-orb-core { width: 44px; height: 44px; font-size: 1.3rem; }
+  .dialog-ripple:nth-child(1) { width: 56px; height: 56px; }
+  .dialog-ripple:nth-child(2) { width: 68px; height: 68px; }
+  .dialog-ripple:nth-child(3) { width: 80px; height: 80px; }
+  #dialogOverlay { gap: 12px; }
+}
+
+/* ── LANG AUTO BADGE ── */
+#langAuto {
+  font-size: .68rem;
+  color: #6ee7b7;
+  background: rgba(16,185,129,.15);
+  border: 1px solid rgba(16,185,129,.3);
+  border-radius: 6px;
+  padding: 2px 6px;
+  letter-spacing: .04em;
+  white-space: nowrap;
+  transition: opacity .3s;
+  opacity: 0;
+}
+#langAuto.visible { opacity: 1; }
+
+/* ── DIALOG BUTTON ── */
+#dialogBtn {
+  font-size: 20px;
+  padding: 10px 13px;
+  background: linear-gradient(135deg,rgba(109,40,217,.7),rgba(16,185,129,.6));
+  border-radius: 10px;
+  border: 1px solid rgba(167,139,250,.4);
+  box-shadow: 0 0 12px rgba(139,92,246,.3);
+  transition: all .2s;
+}
+#dialogBtn:hover { box-shadow: 0 0 22px rgba(139,92,246,.6); transform: scale(1.05); }
+#dialogBtn.active {
+  background: linear-gradient(135deg,rgba(220,38,38,.7),rgba(239,68,68,.5));
+  border-color: rgba(252,165,165,.5);
+  box-shadow: 0 0 22px rgba(239,68,68,.5);
+  animation: dialogPulse .9s ease-in-out infinite;
+}
+@keyframes dialogPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+
+/* ── DIALOG OVERLAY ── */
+#dialogOverlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  background: rgba(2,8,24,.92);
+  backdrop-filter: blur(16px);
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+#dialogOverlay.active { display: flex; }
+
+.dialog-orb {
+  position: relative;
+  width: 130px;
+  height: 130px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog-orb-core {
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  background: radial-gradient(circle,#a78bfa,#6d28d9);
+  box-shadow: 0 0 30px rgba(139,92,246,.8);
+  z-index: 2;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dialog-ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid rgba(167,139,250,.5);
+  animation: rippleOut 2s ease-out infinite;
+}
+.dialog-ripple:nth-child(1) { width: 90px;  height: 90px;  animation-delay: 0s; }
+.dialog-ripple:nth-child(2) { width: 110px; height: 110px; animation-delay: .55s; }
+.dialog-ripple:nth-child(3) { width: 130px; height: 130px; animation-delay: 1.1s; }
+@keyframes rippleOut {
+  0%  { transform:scale(.7); opacity:.8; }
+  100%{ transform:scale(1.4); opacity:0; }
+}
+.dialog-ripple.thinking { border-color: rgba(251,191,36,.5); animation: rippleThink 1.2s ease-in-out infinite; }
+@keyframes rippleThink { 0%,100%{opacity:.3} 50%{opacity:.9} }
+.dialog-ripple.speaking { border-color: rgba(52,211,153,.5); animation: rippleSpeak .7s ease-in-out infinite; }
+@keyframes rippleSpeak { 0%,100%{transform:scale(.85);opacity:.5} 50%{transform:scale(1.15);opacity:1} }
+
+#dialogStatus {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #c4b5fd;
+  text-shadow: 0 0 14px rgba(167,139,250,.6);
+  letter-spacing: .06em;
+  min-height: 1.6em;
+  text-align: center;
+}
+#dialogStopBtn {
+  padding: 12px 36px;
+  border-radius: 50px;
+  background: rgba(220,38,38,.25);
+  border: 1px solid rgba(252,165,165,.4);
+  color: #fca5a5;
+  font-size: 1rem;
+  cursor: pointer;
+  letter-spacing: .04em;
+  transition: all .2s;
+}
+#dialogStopBtn:hover { background: rgba(220,38,38,.45); box-shadow: 0 0 16px rgba(239,68,68,.4); }
+
+#dialogTranscript {
+  font-size: .85rem;
+  color: #94a3b8;
+  text-align: center;
+  max-width: 300px;
+  min-height: 1.4em;
+  font-style: italic;
+  opacity: .8;
+}
+</style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<header>
+  🌌 AI Pro Max
+  <select id="lang">
+    <option value="ru-RU">🇷🇺 RU</option>
+    <option value="en-US">🇺🇸 EN</option>
+    <option value="zh-CN">🇨🇳 中文</option>
+    <option value="ja-JP">🇯🇵 日本語</option>
+    <option value="ko-KR">🇰🇷 한국어</option>
+    <option value="hi-IN">🇮🇳 हिंदी</option>
+    <option value="fr-FR">🇫🇷 FR</option>
+    <option value="de-DE">🇩🇪 DE</option>
+    <option value="es-ES">🇪🇸 ES</option>
+    <option value="pt-BR">🇧🇷 PT</option>
+    <option value="ar-SA">🇸🇦 AR</option>
+  </select>
+  <span id="langAuto">🔍 авто</span>
+</header>
+
+<div class="tabs">
+  <button class="tab active" id="tabChat" onclick="setMode('chat')">💬 Чат</button>
+  <button class="tab" id="tabImage" onclick="setMode('image')">🎨 Образ</button>
+  <button class="tab" id="tabMystic" onclick="setMode('mystic')">🔮 Мистика</button>
+</div>
+
+<div id="speaking">🔊 Speaking…</div>
+<div id="chat"></div>
+
+<!-- DIVINATION PANEL -->
+<div id="divination-panel">
+  <div class="div-title" id="div-title">✨ Выберите способ гадания</div>
+
+  <div class="div-btns">
+    <button class="div-btn" id="btnTarot" onclick="selectDiv('tarot')">🃏 Карты Таро</button>
+    <button class="div-btn" id="btnRune" onclick="selectDiv('rune')">ᚠ Руны</button>
+    <button class="div-btn" id="btnIching" onclick="selectDiv('iching')">☯ Книга Перемен</button>
+  </div>
+
+  <div id="reveal-area"></div>
+</div>
+
+<!-- DIALOG OVERLAY -->
+<div id="dialogOverlay">
+  <div class="dialog-orb">
+    <div class="dialog-ripple"></div>
+    <div class="dialog-ripple"></div>
+    <div class="dialog-ripple"></div>
+    <div class="dialog-orb-core" id="dialogOrbIcon">🎙️</div>
+  </div>
+  <div id="dialogStatus">Слушаю…</div>
+  <div id="dialogLangBadge" style="font-size:.75rem;color:#6ee7b7;background:rgba(16,185,129,.15);border:1px solid rgba(16,185,129,.3);border-radius:8px;padding:3px 10px;letter-spacing:.04em;opacity:0;transition:opacity .3s;"></div>
+  <div id="dialogTranscript"></div>
+  <button id="dialogStopBtn" onclick="stopDialog()">✕ Завершить диалог</button>
+</div>
+
+<footer>
+  <button id="voiceBtn" title="Голосовой ввод">🎙️</button>
+  <input id="userInput" placeholder="Напиши или скажи..." />
+  <button id="sendBtn">➡️</button>
+  <button id="ttsBtn" title="Вкл/Выкл озвучку">🔊</button>
+  <button id="dialogBtn" title="Голосовой диалог с ботом" onclick="startDialog()">🗣️</button>
+</footer>
+
+<script>
+/* ══════════════════════════════════
+   STARFIELD
+══════════════════════════════════ */
+(function() {
+  const canvas = document.getElementById("stars-canvas");
+  const ctx = canvas.getContext("2d");
+  let stars = [];
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  window.addEventListener("resize", resize);
+  resize();
+
+  for (let i = 0; i < 220; i++) {
+    stars.push({
+      x: Math.random(),
+      y: Math.random(),
+      r: Math.random() * 1.4 + 0.2,
+      a: Math.random(),
+      speed: Math.random() * 0.008 + 0.002,
+      phase: Math.random() * Math.PI * 2,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const t = Date.now() / 1000;
+    stars.forEach(s => {
+      const alpha = 0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * s.speed * 6 + s.phase));
+      ctx.beginPath();
+      ctx.arc(s.x * canvas.width, s.y * canvas.height, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(200,210,255,${alpha})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+/* ══════════════════════════════════
+   APP STATE
+══════════════════════════════════ */
+const chatEl       = document.getElementById("chat");
+const inputEl      = document.getElementById("userInput");
+const langEl       = document.getElementById("lang");
+const langAutoEl   = document.getElementById("langAuto");
+const speakEl      = document.getElementById("speaking");
+const ttsBtn       = document.getElementById("ttsBtn");
+const voiceBtn     = document.getElementById("voiceBtn");
+const sendBtn      = document.getElementById("sendBtn");
+const divPanel     = document.getElementById("divination-panel");
+const revealArea   = document.getElementById("reveal-area");
+const divTitle     = document.getElementById("div-title");
+const dialogOverlay= document.getElementById("dialogOverlay");
+const dialogStatus = document.getElementById("dialogStatus");
+const dialogTranscript = document.getElementById("dialogTranscript");
+const dialogOrbIcon  = document.getElementById("dialogOrbIcon");
+const dialogLangBadge= document.getElementById("dialogLangBadge");
+const dialogBtn      = document.getElementById("dialogBtn");
+
+let ttsEnabled  = true;
+let currentAudio= null;
+let currentMode = "chat";
+let divMode     = null;
+let dialogActive= false;
+let dialogRec   = null;
+
+/* ══════════════════════════════════
+   AUTO LANGUAGE DETECTION
+══════════════════════════════════ */
+const langMap = [
+  { re: /[\u0400-\u04FF]/, lang: "ru-RU", label: "🔍 RU" },
+  { re: /[\u3040-\u309F\u30A0-\u30FF]/, lang: "ja-JP", label: "🔍 JA" },
+  { re: /[\uAC00-\uD7AF]/, lang: "ko-KR", label: "🔍 KO" },
+  { re: /[\u4E00-\u9FFF]/, lang: "zh-CN", label: "🔍 ZH" },
+  { re: /[\u0900-\u097F]/, lang: "hi-IN", label: "🔍 HI" },
+  { re: /[\u0600-\u06FF]/, lang: "ar-SA", label: "🔍 AR" },
+  { re: /[a-zA-ZÀ-ÖØ-öø-ÿ]/, lang: null, label: "🔍 EN" },
+];
+
+function detectLangFromText(text) {
+  if (!text) return null;
+  for (const { re, lang, label } of langMap) {
+    if (re.test(text)) {
+      if (lang && langEl.value !== lang) langEl.value = lang;
+      langAutoEl.textContent = label;
+      langAutoEl.classList.add("visible");
+      return lang;
+    }
+  }
+  langAutoEl.classList.remove("visible");
+  return null;
+}
+
+let autoDetectTimer = null;
+inputEl.addEventListener("input", () => {
+  clearTimeout(autoDetectTimer);
+  autoDetectTimer = setTimeout(() => detectLangFromText(inputEl.value.trim()), 250);
+});
+
+/* ══════════════════════════════════
+   MODE SWITCHING
+══════════════════════════════════ */
+function setMode(mode) {
+  currentMode = mode;
+  ["chat","image","mystic"].forEach(m => {
+    const t = document.getElementById("tab" + m.charAt(0).toUpperCase() + m.slice(1));
+    if (t) t.classList.toggle("active", m === mode);
+  });
+
+  const isChat  = mode === "chat";
+  const isImage = mode === "image";
+  const isMystic= mode === "mystic";
+
+  chatEl.style.display       = (isChat || isImage) ? "flex"  : "none";
+  divPanel.classList.toggle("active", isMystic);
+  document.querySelector("footer").style.display = isMystic ? "none" : "flex";
+  speakEl.style.display      = isChat ? "" : "none";
+
+  if (isChat)  { inputEl.placeholder = "Напиши или скажи..."; voiceBtn.style.display = ""; ttsBtn.style.display = ""; }
+  if (isImage) { inputEl.placeholder = "Опиши изображение…";  voiceBtn.style.display = "none"; ttsBtn.style.display = "none"; }
+  if (isMystic){ divMode = null; revealArea.innerHTML = ""; resetDivBtns(); divTitle.textContent = "✨ Выберите способ гадания"; }
+  inputEl.focus();
+}
+
+function resetDivBtns() {
+  document.querySelectorAll(".div-btn").forEach(b => b.classList.remove("selected"));
+}
+
+/* ══════════════════════════════════
+   DIVINATION SELECTION
+══════════════════════════════════ */
+function selectDiv(type) {
+  divMode = type;
+  resetDivBtns();
+  document.getElementById("btn" + type.charAt(0).toUpperCase() + type.slice(1)).classList.add("selected");
+  revealArea.innerHTML = "";
+
+  const titles = { tarot: "🃏 Карты Таро", rune: "ᚠ Гадание на Рунах", iching: "☯ Книга Перемен — И-Цзин" };
+  divTitle.textContent = titles[type];
+
+  const btn = document.createElement("button");
+  btn.className = "draw-btn";
+  btn.textContent = type === "tarot" ? "✨ Вытащить карту" : type === "rune" ? "✨ Бросить руну" : "✨ Бросить монеты";
+  btn.onclick = () => drawDivination(type);
+  revealArea.appendChild(btn);
+}
+
+/* ══════════════════════════════════
+   DATA
+══════════════════════════════════ */
+const tarotCards = [
+  { name:"Шут",             img:"https://upload.wikimedia.org/wikipedia/commons/9/90/RWS_Tarot_00_Fool.jpg",           meaning:"Новое начало, спонтанность, авантюра и свобода духа." },
+  { name:"Маг",             img:"https://upload.wikimedia.org/wikipedia/commons/d/de/RWS_Tarot_01_Magician.jpg",       meaning:"Воля, мастерство, концентрация всех сил." },
+  { name:"Верховная Жрица", img:"https://upload.wikimedia.org/wikipedia/commons/8/88/RWS_Tarot_02_High_Priestess.jpg", meaning:"Интуиция, тайное знание, внутренний голос." },
+  { name:"Императрица",     img:"https://upload.wikimedia.org/wikipedia/commons/d/d2/RWS_Tarot_03_Empress.jpg",        meaning:"Плодородие, творчество, природная сила." },
+  { name:"Император",       img:"https://upload.wikimedia.org/wikipedia/commons/c/c3/RWS_Tarot_04_Emperor.jpg",        meaning:"Власть, структура, стабильность и порядок." },
+  { name:"Жрец",            img:"https://upload.wikimedia.org/wikipedia/commons/8/8d/RWS_Tarot_05_Hierophant.jpg",     meaning:"Традиция, духовность, наставничество." },
+  { name:"Влюблённые",      img:"https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_06_Lovers.jpg",         meaning:"Любовь, выбор, союз двух душ." },
+  { name:"Колесница",       img:"https://upload.wikimedia.org/wikipedia/commons/9/9b/RWS_Tarot_07_Chariot.jpg",        meaning:"Победа, движение, решимость и контроль." },
+  { name:"Сила",            img:"https://upload.wikimedia.org/wikipedia/commons/f/f5/RWS_Tarot_08_Strength.jpg",       meaning:"Внутренняя сила, мужество, терпение." },
+  { name:"Отшельник",       img:"https://upload.wikimedia.org/wikipedia/commons/4/4d/RWS_Tarot_09_Hermit.jpg",         meaning:"Самопознание, уединение, поиск истины." },
+  { name:"Колесо Фортуны",  img:"https://upload.wikimedia.org/wikipedia/commons/3/3c/RWS_Tarot_10_Wheel_of_Fortune.jpg",meaning:"Судьба, цикличность, удача и перемены." },
+  { name:"Справедливость",  img:"https://upload.wikimedia.org/wikipedia/commons/e/e0/RWS_Tarot_11_Justice.jpg",        meaning:"Баланс, честность, закон и карма." },
+  { name:"Повешенный",      img:"https://upload.wikimedia.org/wikipedia/commons/2/2b/RWS_Tarot_12_Hanged_Man.jpg",     meaning:"Жертва, новая перспектива, духовный рост." },
+  { name:"Смерть",          img:"https://upload.wikimedia.org/wikipedia/commons/d/d7/RWS_Tarot_13_Death.jpg",          meaning:"Трансформация, окончание цикла, возрождение." },
+  { name:"Умеренность",     img:"https://upload.wikimedia.org/wikipedia/commons/f/f8/RWS_Tarot_14_Temperance.jpg",     meaning:"Гармония, баланс, терпение и синтез." },
+  { name:"Дьявол",          img:"https://upload.wikimedia.org/wikipedia/commons/5/55/RWS_Tarot_15_Devil.jpg",          meaning:"Искушение, оковы, зависимость и теневая сторона." },
+  { name:"Башня",           img:"https://upload.wikimedia.org/wikipedia/commons/5/53/RWS_Tarot_16_Tower.jpg",          meaning:"Потрясение, разрушение старого, освобождение." },
+  { name:"Звезда",          img:"https://upload.wikimedia.org/wikipedia/commons/d/db/RWS_Tarot_17_Star.jpg",           meaning:"Надежда, вдохновение, исцеление и свет." },
+  { name:"Луна",            img:"https://upload.wikimedia.org/wikipedia/commons/7/7f/RWS_Tarot_18_Moon.jpg",           meaning:"Иллюзии, подсознание, страхи и интуиция." },
+  { name:"Солнце",          img:"https://upload.wikimedia.org/wikipedia/commons/1/17/RWS_Tarot_19_Sun.jpg",            meaning:"Радость, успех, жизненная сила и ясность." },
+  { name:"Суд",             img:"https://upload.wikimedia.org/wikipedia/commons/d/dd/RWS_Tarot_20_Judgement.jpg",      meaning:"Пробуждение, призыв, возрождение и оценка." },
+  { name:"Мир",             img:"https://upload.wikimedia.org/wikipedia/commons/f/ff/RWS_Tarot_21_World.jpg",          meaning:"Завершённость, достижение, целостность и танец жизни." },
+];
+
+const runes = [
+  { symbol:"ᚠ", name:"Феху",    meaning:"Богатство, удача, изобилие, новые начала." },
+  { symbol:"ᚢ", name:"Уруз",    meaning:"Сила, здоровье, жизненная энергия, выносливость." },
+  { symbol:"ᚦ", name:"Турисаз", meaning:"Защита, удар судьбы, граница между мирами." },
+  { symbol:"ᚨ", name:"Ансуз",   meaning:"Мудрость, речь, послание богов, вдохновение." },
+  { symbol:"ᚱ", name:"Райдо",   meaning:"Путешествие, движение вперёд, правильный путь." },
+  { symbol:"ᚲ", name:"Кано",    meaning:"Огонь знания, свет в темноте, творчество." },
+  { symbol:"ᚷ", name:"Гебо",    meaning:"Дар, партнёрство, взаимный обмен, единство." },
+  { symbol:"ᚹ", name:"Вуньо",   meaning:"Радость, гармония, исполнение желаний, успех." },
+  { symbol:"ᚺ", name:"Хагалаз", meaning:"Разрушение для обновления, хаос и трансформация." },
+  { symbol:"ᚾ", name:"Науд",    meaning:"Нужда, ограничение, терпение рождает силу." },
+  { symbol:"ᛁ", name:"Иса",     meaning:"Лёд, остановка, ожидание и концентрация." },
+  { symbol:"ᛃ", name:"Йера",    meaning:"Урожай, цикл года, награда за труд." },
+  { symbol:"ᛇ", name:"Эйваз",   meaning:"Тис, защита, связь между мирами." },
+  { symbol:"ᛈ", name:"Перт",    meaning:"Тайна, судьба, рождение нового." },
+  { symbol:"ᛉ", name:"Альгиз",  meaning:"Защита, страж, связь с богами." },
+  { symbol:"ᛊ", name:"Соулу",   meaning:"Солнце, победа, жизненная сила, путеводная звезда." },
+  { symbol:"ᛏ", name:"Тиваз",   meaning:"Победа, честь, справедливость и жертва." },
+  { symbol:"ᛒ", name:"Беркано", meaning:"Берёза, рождение, рост, женственность и плодородие." },
+  { symbol:"ᛖ", name:"Эваз",    meaning:"Конь, движение, изменение, доверие и партнёрство." },
+  { symbol:"ᛗ", name:"Манназ",  meaning:"Человек, разум, сообщество, самосознание." },
+  { symbol:"ᛚ", name:"Лагуз",   meaning:"Вода, интуиция, поток жизни, подсознание." },
+  { symbol:"ᛜ", name:"Ингваз",  meaning:"Плодородие, потенциал, завершение цикла." },
+  { symbol:"ᛞ", name:"Дагаз",   meaning:"Рассвет, прорыв, трансформация и новый день." },
+  { symbol:"ᛟ", name:"Отала",   meaning:"Наследие, дом, корни, передача опыта." },
+];
+
+const hexagrams = [
+  { num:1,  name:"Цянь — Творчество",    lines:[1,1,1,1,1,1], meaning:"Небесная мощь, чистое творческое начало, лидерство и сила духа." },
+  { num:2,  name:"Кунь — Исполнение",    lines:[0,0,0,0,0,0], meaning:"Земля, восприимчивость, служение, мягкость побеждает твёрдость." },
+  { num:3,  name:"Чжунь — Трудность",    lines:[1,0,0,0,1,0], meaning:"Начальная трудность, хаос перед порядком, терпение и упорство." },
+  { num:4,  name:"Мэн — Незрелость",     lines:[0,1,0,0,0,1], meaning:"Юношеская глупость, обучение, наставник и ученик." },
+  { num:5,  name:"Сюй — Ожидание",       lines:[1,1,1,0,1,0], meaning:"Ожидание нужного момента, питание духа, доверие к судьбе." },
+  { num:6,  name:"Сун — Борьба",         lines:[0,1,0,1,1,1], meaning:"Конфликт, судебная тяжба, осторожность в спорах." },
+  { num:7,  name:"Ши — Войско",          lines:[0,1,0,0,0,0], meaning:"Дисциплина, организация, силы порядка." },
+  { num:8,  name:"Би — Единение",        lines:[0,0,0,0,1,0], meaning:"Союз, сближение, искреннее партнёрство." },
+  { num:11, name:"Тай — Мир",            lines:[1,1,1,0,0,0], meaning:"Процветание, гармония Неба и Земли, золотое время." },
+  { num:12, name:"Пи — Застой",          lines:[0,0,0,1,1,1], meaning:"Упадок, разобщённость, ожидание перемен." },
+  { num:13, name:"Тун Жэнь — Единство",  lines:[1,0,1,1,1,1], meaning:"Братство людей, согласие, совместный труд." },
+  { num:14, name:"Да Ю — Великое",       lines:[1,1,1,1,0,1], meaning:"Великое обладание, успех при правильном пути." },
+  { num:15, name:"Цянь — Скромность",    lines:[0,0,1,0,0,0], meaning:"Скромность возвышает, равенство и умеренность." },
+  { num:16, name:"Юй — Энтузиазм",       lines:[0,0,0,1,0,0], meaning:"Воодушевление, музыка душ, движение от сердца." },
+  { num:17, name:"Суй — Следование",     lines:[1,0,0,1,1,0], meaning:"Следование потоку, гибкость, адаптация." },
+  { num:18, name:"Гу — Исправление",     lines:[0,1,1,0,0,1], meaning:"Устранение застарелых проблем, обновление порядка." },
+  { num:24, name:"Фу — Возврат",         lines:[1,0,0,0,0,0], meaning:"Возвращение света, поворотный момент, возрождение." },
+  { num:30, name:"Ли — Огонь",           lines:[1,0,1,1,0,1], meaning:"Ясность, красота, зависимость и освещение пути." },
+  { num:29, name:"Кань — Вода",          lines:[0,1,0,0,1,0], meaning:"Опасность, глубина, мужество проходить через трудное." },
+  { num:63, name:"Цзи Цзи — Конец",      lines:[1,0,1,0,1,0], meaning:"Завершённость цикла, равновесие достигнуто, осторожность." },
+  { num:64, name:"Вэй Цзи — До конца",   lines:[0,1,0,1,0,1], meaning:"Незавершённость, переход, почти у цели — не торопись." },
+];
+
+/* ══════════════════════════════════
+   DRAW DIVINATION
+══════════════════════════════════ */
+function drawDivination(type) {
+  revealArea.innerHTML = "";
+
+  if (type === "tarot") drawTarot();
+  else if (type === "rune") drawRune();
+  else if (type === "iching") drawIching();
+}
+
+function drawTarot() {
+  const card = tarotCards[Math.floor(Math.random() * tarotCards.length)];
+
+  const scene = document.createElement("div");
+  scene.className = "card-scene";
+  const flip = document.createElement("div");
+  flip.className = "card-flip";
+
+  const back = document.createElement("div");
+  back.className = "card-face card-back";
+  back.textContent = "🌟";
+
+  const front = document.createElement("div");
+  front.className = "card-face card-front";
+  const img = document.createElement("img");
+  img.src = card.img;
+  img.alt = card.name;
+  front.appendChild(img);
+
+  flip.appendChild(back);
+  flip.appendChild(front);
+  scene.appendChild(flip);
+  revealArea.appendChild(scene);
+
+  const info = document.createElement("div");
+  info.className = "card-info";
+  info.style.opacity = "0";
+  revealArea.appendChild(info);
+
+  setTimeout(() => {
+    flip.classList.add("flipped");
+    setTimeout(() => {
+      info.innerHTML = `<div class="card-name">${card.name}</div><div class="card-meaning">${card.meaning}</div>`;
+      info.style.opacity = "1";
+      info.style.transition = "opacity .5s";
+      addRedrawBtn("tarot");
+    }, 950);
+  }, 300);
+}
+
+function drawRune() {
+  const rune = runes[Math.floor(Math.random() * runes.length)];
+
+  const display = document.createElement("div");
+  display.className = "rune-display hidden";
+  display.textContent = rune.symbol;
+  revealArea.appendChild(display);
+
+  const info = document.createElement("div");
+  info.className = "card-info";
+  info.style.opacity = "0";
+  revealArea.appendChild(info);
+
+  setTimeout(() => {
+    display.classList.remove("hidden");
+    display.style.transition = "font-size .7s cubic-bezier(.34,1.56,.64,1), opacity .5s";
+    display.style.fontSize = "5rem";
+    display.style.opacity = "1";
+    setTimeout(() => {
+      info.innerHTML = `<div class="card-name">${rune.symbol} ${rune.name}</div><div class="card-meaning">${rune.meaning}</div>`;
+      info.style.opacity = "1";
+      info.style.transition = "opacity .5s";
+      addRedrawBtn("rune");
+    }, 750);
+  }, 200);
+}
+
+function drawIching() {
+  const hex = hexagrams[Math.floor(Math.random() * hexagrams.length)];
+
+  const wrap = document.createElement("div");
+  wrap.className = "hexagram-wrap";
+  wrap.style.opacity = "0";
+
+  for (let i = 0; i < 6; i++) {
+    const line = document.createElement("div");
+    if (hex.lines[i] === 1) {
+      line.className = "hex-line hex-solid";
+      line.style.animationDelay = (i * 0.12) + "s";
+    } else {
+      line.className = "hex-line hex-broken";
+      line.style.animationDelay = (i * 0.12) + "s";
+      line.innerHTML = "<span></span><span></span>";
+    }
+    wrap.appendChild(line);
+  }
+  revealArea.appendChild(wrap);
+
+  const info = document.createElement("div");
+  info.className = "hex-info";
+  info.style.opacity = "0";
+  revealArea.appendChild(info);
+
+  setTimeout(() => {
+    wrap.style.transition = "opacity .6s";
+    wrap.style.opacity = "1";
+    setTimeout(() => {
+      info.innerHTML = `<div class="hex-name">Гексаграмма ${hex.num}: ${hex.name}</div><div class="hex-meaning">${hex.meaning}</div>`;
+      info.style.opacity = "1";
+      info.style.transition = "opacity .5s";
+      addRedrawBtn("iching");
+    }, 900);
+  }, 200);
+}
+
+function addRedrawBtn(type) {
+  const btn = document.createElement("button");
+  btn.className = "draw-btn";
+  btn.style.marginTop = "4px";
+  const labels = { tarot: "🔄 Вытащить другую", rune: "🔄 Бросить снова", iching: "🔄 Бросить снова" };
+  btn.textContent = labels[type];
+  btn.onclick = () => { revealArea.innerHTML = ""; selectDiv(type); setTimeout(() => drawDivination(type), 50); };
+  revealArea.appendChild(btn);
+}
+
+/* ══════════════════════════════════
+   TTS TOGGLE
+══════════════════════════════════ */
+ttsBtn.onclick = () => {
+  ttsEnabled = !ttsEnabled;
+  ttsBtn.textContent = ttsEnabled ? "🔊" : "🔇";
+  ttsBtn.classList.toggle("muted", !ttsEnabled);
+  if (!ttsEnabled && currentAudio) { currentAudio.pause(); currentAudio = null; speakEl.classList.remove("active"); }
+};
+
+/* ══════════════════════════════════
+   ADD MESSAGE
+══════════════════════════════════ */
+function addMessage(text, cls) {
+  const div = document.createElement("div");
+  div.className = "message " + cls;
+  div.textContent = text;
+  chatEl.appendChild(div);
+  chatEl.scrollTop = chatEl.scrollHeight;
+  return div;
+}
+
+/* ══════════════════════════════════
+   SEND MESSAGE
+══════════════════════════════════ */
+async function sendMessage() {
+  const text = inputEl.value.trim();
+  if (!text) return;
+  addMessage(text, "user");
+  inputEl.value = "";
+  sendBtn.disabled = true;
+
+  if (currentMode === "image") {
+    const thinking = addMessage("⏳ Генерирую изображение…", "bot thinking");
+    try {
+      const res = await fetch("/api/image?" + new URLSearchParams({ prompt: text }));
+      const data = await res.json();
+      thinking.remove();
+      if (data.error) { addMessage("Ошибка: " + data.error, "bot"); }
+      else {
+        const wrap = document.createElement("div");
+        wrap.className = "img-wrap";
+        const img = document.createElement("img");
+        img.className = "chat-img"; img.alt = text;
+        img.onerror = () => { wrap.innerHTML = ""; addMessage("Ошибка загрузки изображения", "bot"); };
+        img.src = data.url;
+        const dlBtn = document.createElement("button");
+        dlBtn.className = "dl-btn"; dlBtn.textContent = "🔗 Открыть";
+        dlBtn.onclick = () => window.open(data.url, "_blank");
+        wrap.appendChild(img); wrap.appendChild(dlBtn);
+        chatEl.appendChild(wrap); chatEl.scrollTop = chatEl.scrollHeight;
+      }
+    } catch(e) { addMessage("Ошибка соединения", "bot"); }
+    finally { sendBtn.disabled = false; }
+    return;
+  }
+
+  const thinking = addMessage("…", "bot thinking");
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, lang: langEl.value })
+    });
+    const data = await res.json();
+    thinking.remove();
+    if (data.error) { addMessage("Ошибка: " + data.error, "bot"); }
+    else { addMessage(data.reply, "bot"); speak(data.reply); }
+  } catch(e) { thinking.remove(); addMessage("Ошибка соединения", "bot"); }
+  finally { sendBtn.disabled = false; }
+}
+
+/* ══════════════════════════════════
+   TTS
+══════════════════════════════════ */
+async function speak(text) {
+  if (!ttsEnabled) return;
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  try {
+    const res = await fetch("/api/tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, lang: langEl.value })
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    currentAudio = new Audio(url);
+    speakEl.classList.add("active");
+    currentAudio.onended = () => { speakEl.classList.remove("active"); URL.revokeObjectURL(url); currentAudio = null; };
+    currentAudio.play();
+  } catch(e) { speakEl.classList.remove("active"); }
+}
+
+/* ══════════════════════════════════
+   VOICE INPUT
+══════════════════════════════════ */
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+voiceBtn.onclick = () => {
+  if (!SR) { alert("Голосовой ввод не поддерживается"); return; }
+  voiceBtn.textContent = "⏺"; voiceBtn.disabled = true;
+  const r = new SR();
+  r.lang = langEl.value; r.interimResults = false; r.continuous = false;
+  r.onresult = e => { inputEl.value = e.results[0][0].transcript; sendMessage(); };
+  r.onend = () => { voiceBtn.textContent = "🎙️"; voiceBtn.disabled = false; };
+  r.onerror = () => { voiceBtn.textContent = "🎙️"; voiceBtn.disabled = false; };
+  r.start();
+};
+
+sendBtn.onclick = sendMessage;
+inputEl.addEventListener("keydown", e => { if (e.key === "Enter") sendMessage(); });
+
+/* ══════════════════════════════════
+   VOICE DIALOG (CONTINUOUS)
+══════════════════════════════════ */
+function setDialogState(state) {
+  const ripples = dialogOverlay.querySelectorAll(".dialog-ripple");
+  ripples.forEach(r => { r.classList.remove("thinking","speaking"); });
+  if (state === "listening") {
+    dialogStatus.textContent = "🎙️ Слушаю…";
+    dialogOrbIcon.textContent = "🎙️";
+    dialogOrbIcon.style.background = "radial-gradient(circle,#a78bfa,#6d28d9)";
+    dialogOrbIcon.style.boxShadow = "0 0 30px rgba(139,92,246,.8)";
+  } else if (state === "thinking") {
+    dialogStatus.textContent = "💭 Думаю…";
+    dialogOrbIcon.textContent = "💭";
+    dialogOrbIcon.style.background = "radial-gradient(circle,#fde68a,#d97706)";
+    dialogOrbIcon.style.boxShadow = "0 0 30px rgba(217,119,6,.8)";
+    ripples.forEach(r => r.classList.add("thinking"));
+  } else if (state === "speaking") {
+    dialogStatus.textContent = "🔊 Говорю…";
+    dialogOrbIcon.textContent = "🔊";
+    dialogOrbIcon.style.background = "radial-gradient(circle,#6ee7b7,#059669)";
+    dialogOrbIcon.style.boxShadow = "0 0 30px rgba(5,150,105,.8)";
+    ripples.forEach(r => r.classList.add("speaking"));
+  }
+}
+
+function startDialog() {
+  if (!SR) { alert("Голосовой ввод не поддерживается браузером"); return; }
+  dialogActive = true;
+  dialogBtn.classList.add("active");
+  dialogOverlay.classList.add("active");
+  dialogTranscript.textContent = "";
+  dialogLangBadge.style.opacity = "0";
+  dialogLangBadge.textContent = "";
+  setDialogState("listening");
+  listenLoop();
+}
+
+function stopDialog() {
+  dialogActive = false;
+  if (dialogRec) { try { dialogRec.abort(); } catch(e){} dialogRec = null; }
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; speakEl.classList.remove("active"); }
+  dialogOverlay.classList.remove("active");
+  dialogBtn.classList.remove("active");
+}
+
+async function listenLoop() {
+  if (!dialogActive) return;
+  setDialogState("listening");
+  dialogTranscript.textContent = "";
+
+  const text = await listenOnce();
+  if (!dialogActive) return;
+  if (!text) { listenLoop(); return; }
+
+  // Auto-detect language from spoken text and update for next cycle
+  const detectedEntry = langMap.find(({ re }) => re.test(text));
+  if (detectedEntry) {
+    if (detectedEntry.lang && langEl.value !== detectedEntry.lang) {
+      langEl.value = detectedEntry.lang;
+    }
+    dialogLangBadge.textContent = detectedEntry.label;
+    dialogLangBadge.style.opacity = "1";
+  }
+
+  dialogTranscript.textContent = "« " + text + " »";
+  addMessage(text, "user");
+  setDialogState("thinking");
+
+  try {
+    const res = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ message: text, lang: langEl.value })
+    });
+    const data = await res.json();
+    if (!dialogActive) return;
+    addMessage(data.reply, "bot");
+    setDialogState("speaking");
+    await speakAndWait(data.reply);
+    if (!dialogActive) return;
+    listenLoop();
+  } catch(e) {
+    if (dialogActive) listenLoop();
+  }
+}
+
+function listenOnce() {
+  return new Promise(resolve => {
+    const r = new SR();
+    dialogRec = r;
+    r.lang = langEl.value;
+    r.interimResults = false;
+    r.continuous = false;
+    r.onresult = e => resolve(e.results[0][0].transcript.trim());
+    r.onend = () => resolve("");
+    r.onerror = () => resolve("");
+    try { r.start(); } catch(e) { resolve(""); }
+  });
+}
+
+async function speakAndWait(text) {
+  return new Promise(async resolve => {
+    try {
+      const res = await fetch("/api/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, lang: langEl.value })
+      });
+      if (!res.ok) { resolve(); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      currentAudio.onended = () => { URL.revokeObjectURL(url); currentAudio = null; resolve(); };
+      currentAudio.onerror = () => { resolve(); };
+      currentAudio.play();
+    } catch(e) { resolve(); }
+  });
+}
+</script>
+</body>
+</html>

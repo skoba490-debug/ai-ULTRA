@@ -1,0 +1,21 @@
+{
+  "name": "asset-manager",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
+    "start": "node dist/server.js",
+    "dev": "tsx server/index.ts"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "pg": "^8.11.5",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0",
+    "typescript": "^5.4.5",
+    "esbuild": "^0.20.2",
+    "tsx": "^4.7.1"
+  }
+}
