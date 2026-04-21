@@ -1,11 +1,12 @@
-{
-  "name": "asset-manager",
+"name": "asset-manager",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
-    "build": "vite build && esbuild server/index.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
-    "start": "node dist/server.js",
-    "dev": "tsx server/index.ts"
+    "build": "npx vite build && npx esbuild server/index.ts --platform=node --bundle --format=esm --outfile=dist/server.js",
+    "start": "node dist/server.js"
   },
   "dependencies": {
     "express": "^4.19.2",
@@ -14,8 +15,6 @@
   },
   "devDependencies": {
     "vite": "^5.2.0",
-    "typescript": "^5.4.5",
-    "esbuild": "^0.20.2",
-    "tsx": "^4.7.1"
+    "esbuild": "^0.20.2"
   }
 }
